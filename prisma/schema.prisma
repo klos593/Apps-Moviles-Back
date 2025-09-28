@@ -1,0 +1,67 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id               Int              @id @default(autoincrement())
+  email            String           @unique
+  name             String
+  lastName         String
+  password         String
+  birthDate        DateTime
+  phone            String
+  workRadius       Decimal?
+  picture          String
+  Address          Address[]
+  UserProfession   UserProfession[]
+  usedServices     Service[]        @relation("userId")
+  providedServices Service[]        @relation("providerId")
+}
+
+model Address {
+  userId     Int
+  user       User   @relation(fields: [userId], references: [id])
+  street     String
+  number     Int
+  postalCode Int
+  country    String
+  state      String
+
+  @@unique([userId, street, number, postalCode, country, state])
+}
+
+model Profession {
+  id             Int              @id @default(autoincrement())
+  name           String           @unique
+  decription     String
+  UserProfession UserProfession[]
+  Service        Service[]
+}
+
+model UserProfession {
+  userId       Int
+  user         User       @relation(fields: [userId], references: [id])
+  professionId Int
+  profession   Profession @relation(fields: [professionId], references: [id])
+
+  @@unique([userId, professionId])
+}
+
+model Service {
+  id           Int        @id @default(autoincrement())
+  professionId Int
+  profession   Profession @relation(fields: [professionId], references: [id])
+  userId       Int
+  user         User       @relation("userId", fields: [userId], references: [id])
+  providerId   Int
+  provider     User       @relation("providerId", fields: [providerId], references: [id])
+  rating       Float
+  price        Float
+  comment      String?
+  date         DateTime
+}
