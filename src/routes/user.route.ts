@@ -8,9 +8,4 @@ userRouter.get("/users", async (req, res) => {
     res.json(allUsers);
 });
 
-userRouter.get("/professions", async (req, res) => {
-    const allProfessions = await prisma.profession.findMany();
-    res.json(allProfessions);
-});
-
 export default userRouter;
