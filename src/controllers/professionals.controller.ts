@@ -38,7 +38,7 @@ export async function getProfessionals() {
 }
 
 export async function getProfessionalById(professionalId: number) {
-  const professionalFromDb = await prisma.user.findUniqueOrThrow({
+  const professional = await prisma.user.findUniqueOrThrow({
       where: {
         id: professionalId,
       },
@@ -64,16 +64,60 @@ export async function getProfessionalById(professionalId: number) {
     });
 
     const formattedProfessional = {
-      id: professionalFromDb.id,
-      mail: professionalFromDb.email, 
-      name: professionalFromDb.name,
-      lastName: professionalFromDb.lastName,
-      phoneNumber: professionalFromDb.phone, 
-      professions: professionalFromDb.UserProfession.map(up => up.profession.name),
-      rating: Number(professionalFromDb.rating), 
-      picture: professionalFromDb.picture,
-      description: professionalFromDb.description,
+      id: professional.id,
+      mail: professional.email, 
+      name: professional.name,
+      lastName: professional.lastName,
+      phoneNumber: professional.phone, 
+      professions: professional.UserProfession.map(up => up.profession.name),
+      rating: Number(professional.rating), 
+      picture: professional.picture,
+      description: professional.description,
     };
-    
+
     return formattedProfessional;
+}
+
+export async function getProfessionalsByProfession(profession: string) {
+  const professionalsFromDb = await prisma.user.findMany({
+      where: {
+        UserProfession: {
+          some: {
+            profession: {
+              name: {
+                equals: profession,
+                mode: 'insensitive', 
+              },
+            },
+          },
+        },
+      },
+      select: {
+        id: true,
+        name: true,
+        lastName: true,
+        picture: true,
+        rating: true,
+        UserProfession: { 
+          select: {
+            profession: {
+              select: {
+                name: true,
+              },
+            },
+          },
+        },
+      },
+    });
+
+    const formattedProfessionals = professionalsFromDb.map(p => ({
+      id: p.id.toString(), 
+      name: p.name,
+      lastName: p.lastName,
+      picture: p.picture,
+      rating: Number(p.rating ?? 0), 
+      professions: p.UserProfession.map(up => up.profession.name), 
+    }));
+    
+    return formattedProfessionals;
 }
