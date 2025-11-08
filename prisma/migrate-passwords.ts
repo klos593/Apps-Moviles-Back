@@ -1,14 +1,27 @@
-import { PrismaClient } from "@prisma/client";
-import bcrypt from "bcryptjs";
+
+import 'dotenv/config';              
+import { PrismaClient } from '@prisma/client';
+import bcrypt from 'bcryptjs';
+
 const prisma = new PrismaClient();
 
 async function main() {
-  const hash = await bcrypt.hash("123456", 10);
-  await prisma.user.updateMany({
-    where: { password: "hashed_password" },
+  const plain = '123456';              // password users will type
+  const hash = await bcrypt.hash(plain, 10);
+
+  const result = await prisma.user.updateMany({
+    where: { password: 'hashed_password' }, 
     data: { password: hash },
   });
-  console.log("Passwords updated to bcrypt hash for demo users.");
+
+  console.log(`Updated ${result.count} users to bcrypt hash.`);
 }
 
-main().finally(() => prisma.$disconnect());
+main()
+  .catch((e) => {
+    console.error(e);
+    process.exit(1);
+  })
+  .finally(async () => {
+    await prisma.$disconnect();
+  });
