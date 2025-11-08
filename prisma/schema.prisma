@@ -13,7 +13,6 @@ model User {
   name             String
   lastName         String
   password         String
-  birthDate        DateTime
   phone            String
   workRadius       Decimal?
   picture          String
@@ -32,9 +31,10 @@ model Address {
   number     Int
   postalCode Int
   country    String
-  state      String
+  province   String
+  floor      String
 
-  @@unique([userId, street, number, postalCode, country, state])
+  @@unique([userId, street, number, postalCode, country, province, floor])
 }
 
 model Profession {
