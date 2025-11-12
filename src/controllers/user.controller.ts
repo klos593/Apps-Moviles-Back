@@ -2,60 +2,64 @@ import type { Request, Response } from "express";
 import type { Prisma } from "@prisma/client";
 import { prisma } from "../config/prisma.js";
 
+/** GET user by email (legacy shape) */
 export async function getUserByEmail(email: string) {
   const user = await prisma.user.findUniqueOrThrow({
-      where: {
-        email: email,
+    where: { email },
+    select: {
+      id: true,
+      email: true,
+      name: true,
+      lastName: true,
+      phone: true,
+      picture: true,
+      userAddresses: {
+        include: { address: { select: { street: true, number: true } } },
       },
-      select: {
-        id: true,
-        email: true,
-        name: true,
-        lastName: true,
-        phone: true,
-        picture: true,
-        Address: {
-          select: {
-            street: true,
-            number: true,
-          },
-        },
-      },
-    });
+    },
+  });
 
-    const formattedUser = {
-      id: user.id,
-      mail: user.email, 
-      name: user.name,
-      lastName: user.lastName,
-      phone: user.phone, 
-      street: user.Address.map((up: { street: string }) => up.street), 
-      number: user.Address.map((up: { number: number }) => up.number),
-    };
-
-    return formattedUser;
+  return {
+    id: user.id,
+    mail: user.email,
+    name: user.name,
+    lastName: user.lastName,
+    phone: user.phone,
+    street: user.userAddresses.map((ua) => ua.address.street),
+    number: user.userAddresses.map((ua) => ua.address.number),
+  };
 }
 
+/**
+ * PATCH-like: actualiza datos básicos y, si viene dirección,
+ * CREA una nueva Address y la asocia (no modifica ni borra las anteriores).
+ */
 export async function updateUserByEmail(req: Request, res: Response) {
   const { email } = req.params;
   if (!email) return res.status(400).json({ message: "Email param is required" });
 
-
-  const { name, lastName, phone, street, number } = req.body as {
+  const { name, lastName, phone, street, number, postalCode, country, province, floor } = req.body as {
     name?: string;
     lastName?: string;
     phone?: string;
     street?: string;
     number?: number | string;
+    postalCode?: number | string;
+    country?: string;
+    province?: string;
+    floor?: string;
   };
 
-  // si no vino nada actualizable, devolvé 400 (opcional)
   if (
     name === undefined &&
     lastName === undefined &&
     phone === undefined &&
     street === undefined &&
-    number === undefined
+    number === undefined &&
+    postalCode === undefined &&
+    country === undefined &&
+    province === undefined &&
+    floor === undefined
   ) {
     return res.status(400).json({ message: "No fields to update" });
   }
@@ -69,9 +73,91 @@ export async function updateUserByEmail(req: Request, res: Response) {
         name: true,
         lastName: true,
         phone: true,
-        Address: {
+        // Traemos 1 dirección (la más “antigua/primaria” si querés). Podés ordenar por createdAt si lo agregás.
+        userAddresses: {
           take: 1,
+          include: {
+            address: {
+              select: {
+                id: true,
+                street: true,
+                number: true,
+                postalCode: true,
+                country: true,
+                province: true,
+                floor: true,
+              },
+            },
+          },
+        },
+      },
+    });
+    if (!existing) return res.status(404).json({ message: "User not found" });
+
+    const userPatch: Record<string, unknown> = {};
+    if (name !== undefined) userPatch.name = name;
+    if (lastName !== undefined) userPatch.lastName = lastName;
+    if (phone !== undefined) userPatch.phone = phone;
+
+    const result = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+      // 1) actualizar datos básicos
+      const updatedUser =
+        Object.keys(userPatch).length > 0
+          ? await tx.user.update({
+              where: { email },
+              data: userPatch,
+              select: { id: true, email: true, name: true, lastName: true, phone: true },
+            })
+          : {
+              id: existing.id,
+              email: existing.email,
+              name: existing.name,
+              lastName: existing.lastName,
+              phone: existing.phone,
+            };
+
+      // 2) si viene dirección, crear una NUEVA (sin tocar las previas)
+      let returnedAddress:
+        | {
+            street: string;
+            number: number;
+            postalCode: number;
+            country: string;
+            province: string;
+            floor: string | null;
+          }
+        | null = null;
+
+      const wantsAddressChange =
+        street !== undefined || number !== undefined || postalCode !== undefined || country !== undefined || province !== undefined || floor !== undefined;
+
+      if (wantsAddressChange) {
+        // Campos requeridos por el modelo Address:
+        // street, number, postalCode, country, province, floor
+        const prev = existing.userAddresses[0]?.address ?? null;
+
+        const nextStreet = street ?? prev?.street;
+        const nextNumber = number !== undefined ? Number(number) : prev?.number;
+        const nextPostal = postalCode !== undefined ? Number(postalCode) : prev?.postalCode ?? 0;
+        const nextCountry = country ?? prev?.country ?? "";
+        const nextProvince = province ?? prev?.province ?? "";
+        const nextFloor = floor ?? prev?.floor ?? "";
+
+        if (!nextStreet || nextNumber === undefined || Number.isNaN(nextNumber)) {
+          throw new Error("Si se modifica la dirección, se debe ingresar street y number válidos.");
+        }
+
+        const createdAddr = await tx.address.create({
+          data: {
+            street: String(nextStreet).trim(),
+            number: nextNumber,
+            postalCode: nextPostal,
+            country: nextCountry,
+            province: nextProvince,
+            floor: nextFloor,
+          },
           select: {
+            id: true,
             street: true,
             number: true,
             postalCode: true,
@@ -79,65 +165,17 @@ export async function updateUserByEmail(req: Request, res: Response) {
             province: true,
             floor: true,
           },
-        },
-      },
-    });
-    if (!existing) return res.status(404).json({ message: "User not found" });
-
-    const userId = existing.id;
-    const currentAddr = existing.Address?.[0] ?? null;
-
-    const userPatch: any = {};
-    if (name !== undefined) userPatch.name = name;
-    if (lastName !== undefined) userPatch.lastName = lastName;
-    if (phone !== undefined) userPatch.phone = phone;
-
-    const result = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
-      let updatedUser = {
-        id: existing.id,
-        email: existing.email,
-        name: existing.name,
-        lastName: existing.lastName,
-        phone: existing.phone,
-      };
-
-      if (Object.keys(userPatch).length > 0) {
-        updatedUser = await tx.user.update({
-          where: { email },
-          data: userPatch,
-          select: { id: true, email: true, name: true, lastName: true, phone: true },
         });
-      }
 
-      let returnedAddress = currentAddr;
+        await tx.userAddress.create({
+          data: { userId: existing.id, addressId: createdAddr.id },
+        });
 
-      const wantsAddressChange = street !== undefined || number !== undefined;
-      if (wantsAddressChange) {
-        const nextStreet = street !== undefined ? String(street).trim() : currentAddr?.street;
-        const nextNumberRaw = number !== undefined ? number : currentAddr?.number;
-        const nextNumber = Number(nextNumberRaw);
-
-        if (!nextStreet || Number.isNaN(nextNumber as number)) {
-          throw new Error("Si se modifica la direccion, se debe ingresar un numero.");
-        }
-
-        if (currentAddr) {
-          await tx.address.deleteMany({ where: { userId } });
-          returnedAddress = await tx.address.create({
-            data: {
-              userId,
-              street: nextStreet,
-              number: nextNumber!,
-              postalCode: currentAddr.postalCode, 
-              country: currentAddr.country,       
-              province: currentAddr.province,    
-              floor: currentAddr.floor ?? "",     
-            },
-            select: {
-              street: true, number: true, postalCode: true, country: true, province: true, floor: true,
-            },
-          });
-        }
+        const { id: _omit, ...addrOut } = createdAddr;
+        returnedAddress = addrOut;
+      } else if (existing.userAddresses[0]?.address) {
+        const { id: _omit, ...addrOut } = existing.userAddresses[0].address;
+        returnedAddress = addrOut;
       }
 
       return { updatedUser, returnedAddress };
@@ -145,12 +183,12 @@ export async function updateUserByEmail(req: Request, res: Response) {
 
     return res.json({
       ...result.updatedUser,
-      mail: result.updatedUser.email, // si tu front espera "mail"
-      address: result.returnedAddress ?? null,
+      mail: result.updatedUser.email,
+      address: result.returnedAddress ?? null, // si creaste una nueva, vuelve esa; si no, la primera existente
     });
   } catch (err: any) {
     console.error(err);
-    if (err.message?.includes("Street and number")) {
+    if (typeof err.message === "string" && err.message.includes("dirección")) {
       return res.status(400).json({ message: err.message });
     }
     return res.status(500).json({ message: "Internal error" });

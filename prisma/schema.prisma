@@ -7,6 +7,14 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+enum ServiceState {
+  REJECTED
+  ACCEPTED
+  CANCELED
+  COMPLETED
+  PENDING
+}
+
 model User {
   id               Int              @id @default(autoincrement())
   email            String           @unique
@@ -18,23 +26,22 @@ model User {
   picture          String
   rating           Decimal?
   description      String
-  Address          Address[]
   UserProfession   UserProfession[]
   usedServices     Service[]        @relation("userId")
   providedServices Service[]        @relation("providerId")
+  userAddresses    UserAddress[]
 }
 
 model Address {
-  userId     Int
-  user       User   @relation(fields: [userId], references: [id])
-  street     String
-  number     Int
-  postalCode Int
-  country    String
-  province   String
-  floor      String
-
-  @@unique([userId, street, number, postalCode, country, province, floor])
+  id            Int           @id @default(autoincrement())
+  street        String
+  number        Int
+  postalCode    Int
+  country       String
+  province      String
+  floor         String
+  services      Service[]
+  userAddresses UserAddress[]
 }
 
 model Profession {
@@ -54,16 +61,28 @@ model UserProfession {
   @@unique([userId, professionId])
 }
 
+model UserAddress {
+  userId    Int
+  user      User    @relation(fields: [userId], references: [id])
+  addressId Int
+  address   Address @relation(fields: [addressId], references: [id])
+
+  @@unique([userId, addressId])
+}
+
 model Service {
-  id           Int        @id @default(autoincrement())
+  id           Int          @id @default(autoincrement())
   professionId Int
-  profession   Profession @relation(fields: [professionId], references: [id])
+  profession   Profession   @relation(fields: [professionId], references: [id])
   userId       Int
-  user         User       @relation("userId", fields: [userId], references: [id])
+  user         User         @relation("userId", fields: [userId], references: [id])
   providerId   Int
-  provider     User       @relation("providerId", fields: [providerId], references: [id])
+  provider     User         @relation("providerId", fields: [providerId], references: [id])
   rating       Decimal
   price        Decimal
   comment      String?
   date         DateTime
+  addressId    Int          @default(1)
+  address      Address      @relation(fields: [addressId], references: [id])
+  state        ServiceState @default(PENDING)
 }
