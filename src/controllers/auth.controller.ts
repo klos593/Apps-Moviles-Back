@@ -8,15 +8,41 @@ const JWT_EXPIRES_S = Number(process.env.JWT_EXPIRES_S ?? 60 * 60 * 24 * 7);
 const signOpts: SignOptions = { expiresIn: JWT_EXPIRES_S };
 const BCRYPT_ROUNDS = Number(process.env.BCRYPT_ROUNDS ?? 10);
 
+
 export async function register(req: Request, res: Response) {
   try {
-    const { email, password, name, lastName = "", phone = "", birthDate } = req.body;
+    const {
+      email,
+      password,
+      name,
+      lastName = "",
+      phone = "",
+      address, 
+    } = req.body as {
+      email: string;
+      password: string;
+      name: string;
+      lastName?: string;
+      phone?: string;
+      address?: {
+        country?: string;
+        province?: string;
+        street?: string;
+        number?: number | string;
+        floor?: string;
+        postalCode?: number | string;
+      };
+    };
 
+    // 1) email único
     const exists = await prisma.user.findUnique({ where: { email } });
     if (exists) return res.status(409).json({ error: "Email already exists" });
 
+    // 2) hash pass
     const hash = await bcrypt.hash(password, BCRYPT_ROUNDS);
 
+
+    // 4) create atómico con include para devolver Address
     const user = await prisma.user.create({
       data: {
         email,
@@ -26,16 +52,30 @@ export async function register(req: Request, res: Response) {
         phone,
         picture: "",
         description: "",
+        Address: {
+          create: {
+            country: String(address!.country),
+            province: String(address!.province),
+            street: String(address!.street),
+            number: Number(address!.number),        
+            floor: String(address!.floor),
+            postalCode: Number(address!.postalCode), 
+          },
+        },
       },
     });
 
-    const token = jwt.sign({ id: user.id, email: user.email }, JWT_SECRET, { expiresIn: JWT_EXPIRES_S });
+    const token = jwt.sign(
+      { id: user.id, email: user.email },
+      JWT_SECRET,
+      { expiresIn: JWT_EXPIRES_S }
+    );
 
     const { password: _omit, ...safeUser } = user;
-    res.status(201).json({ token, user: safeUser });
-  } catch (e) {
+    return res.status(201).json({ token, user: safeUser });
+  } catch (e: any) {
     console.error(e);
-    res.status(500).json({ error: "Server error" });
+    return res.status(500).json({ error: "Server error" });
   }
 }
 

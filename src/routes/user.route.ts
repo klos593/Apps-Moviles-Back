@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { prisma } from "../config/prisma.js";
-import { getUserByEmail } from "../controllers/user.controller.js";
+import { getUserByEmail, updateUserByEmail } from "../controllers/user.controller.js";
 
 const userRouter = Router();
 
@@ -17,6 +17,8 @@ userRouter.get("/user/:email", async (req, res) => {
     const user = await getUserByEmail(email);
     res.json(user);
 });
+
+userRouter.put("/user/:email", updateUserByEmail);
 
 
 export default userRouter;
