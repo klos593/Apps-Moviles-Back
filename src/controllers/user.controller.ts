@@ -14,10 +14,16 @@ export async function getUserByEmail(email: string) {
       phone: true,
       picture: true,
       userAddresses: {
-        include: { address: { select: { street: true, number: true } } },
+        take: 1,
+        orderBy: { address: { id: "desc" } }, // 👈 usa el id más reciente
+        include: {
+          address: { select: { street: true, number: true } },
+        },
       },
     },
   });
+
+  const lastAddress = user.userAddresses[0]?.address;
 
   return {
     id: user.id,
@@ -25,8 +31,8 @@ export async function getUserByEmail(email: string) {
     name: user.name,
     lastName: user.lastName,
     phone: user.phone,
-    street: user.userAddresses.map((ua) => ua.address.street),
-    number: user.userAddresses.map((ua) => ua.address.number),
+    street: lastAddress?.street ?? "",
+    number: lastAddress?.number ?? 0,
   };
 }
 
