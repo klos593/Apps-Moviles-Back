@@ -17,7 +17,7 @@ export async function getUserByEmail(email: string) {
         take: 1,
         orderBy: { address: { id: "desc" } }, // 👈 usa el id más reciente
         include: {
-          address: { select: { street: true, number: true } },
+          address: { select: { street: true, number: true, floor: true } },
         },
       },
     },
@@ -33,6 +33,7 @@ export async function getUserByEmail(email: string) {
     phone: user.phone,
     street: lastAddress?.street ?? "",
     number: lastAddress?.number ?? 0,
+    floor: lastAddress?.floor ?? "",
   };
 }
 
