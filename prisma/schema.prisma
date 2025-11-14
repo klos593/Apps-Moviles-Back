@@ -78,8 +78,8 @@ model Service {
   user         User         @relation("userId", fields: [userId], references: [id])
   providerId   Int
   provider     User         @relation("providerId", fields: [providerId], references: [id])
-  rating       Decimal
-  price        Decimal
+  rating       Decimal?
+  price        Decimal?
   comment      String?
   date         DateTime
   addressId    Int          @default(1)

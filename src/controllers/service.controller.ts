@@ -1,5 +1,7 @@
-import { prisma } from "../config/prisma.js";
+import { PrismaClient, ServiceState } from '@prisma/client';
+import type { Request, Response } from 'express';
 
+const prisma = new PrismaClient();
 
 export async function getFinishedUsedServices(email: string) {
     const user = await prisma.user.findUnique({
@@ -44,3 +46,147 @@ export async function getFinishedUsedServices(email: string) {
         },
     }));
 }
+
+export const createService = async (req: Request, res: Response) => {
+  try {
+    const {
+      professionId,
+      userId,
+      providerId,
+      rating,
+      price,
+      comment,
+      date,
+      addressId,
+      state,
+    } = req.body;
+
+    // Validaciones de campos requeridos
+    if (!professionId) {
+      return res.status(400).json({
+        error: 'El campo professionId es requerido',
+      });
+    }
+
+    if (!userId) {
+      return res.status(400).json({
+        error: 'El campo userId es requerido',
+      });
+    }
+
+    if (!providerId) {
+      return res.status(400).json({
+        error: 'El campo providerId es requerido',
+      });
+    }
+
+    if (!date) {
+      return res.status(400).json({
+        error: 'El campo date es requerido',
+      });
+    }
+
+    // Validar que la profesión existe
+    const profession = await prisma.profession.findUnique({
+      where: { id: professionId },
+    });
+
+    if (!profession) {
+      return res.status(404).json({
+        error: 'La profesión especificada no existe',
+      });
+    }
+
+    // Validar que el usuario existe
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+    });
+
+    if (!user) {
+      return res.status(404).json({
+        error: 'El usuario especificado no existe',
+      });
+    }
+
+    // Validar que el proveedor existe
+    const provider = await prisma.user.findUnique({
+      where: { id: providerId },
+    });
+
+    if (!provider) {
+      return res.status(404).json({
+        error: 'El proveedor especificado no existe',
+      });
+    }
+
+    // Validar que la dirección existe (si se proporciona)
+    if (addressId) {
+      const address = await prisma.address.findUnique({
+        where: { id: addressId },
+      });
+
+      if (!address) {
+        return res.status(404).json({
+          error: 'La dirección especificada no existe',
+        });
+      }
+    }
+
+    // Crear el servicio
+    const service = await prisma.service.create({
+      data: {
+        professionId,
+        userId,
+        providerId,
+        rating: rating,
+        price: price,
+        comment: comment,
+        date: date,
+        addressId: addressId,
+        state: 'PENDING',
+      },
+      include: {
+        profession: {
+          select: {
+            id: true,
+            name: true,
+            picture: true,
+          },
+        },
+        user: {
+          select: {
+            id: true,
+            name: true,
+            lastName: true,
+            email: true,
+            phone: true,
+            picture: true,
+          },
+        },
+        provider: {
+          select: {
+            id: true,
+            name: true,
+            lastName: true,
+            email: true,
+            phone: true,
+            picture: true,
+            rating: true,
+          },
+        },
+        address: true,
+      },
+    });
+
+    return res.status(201).json({
+      message: 'Servicio creado exitosamente',
+      service,
+    });
+  } catch (error) {
+    console.error('Error al crear servicio:', error);
+    return res.status(500).json({
+      error: 'Error interno del servidor al crear el servicio',
+      details: error instanceof Error ? error.message : 'Error desconocido',
+    });
+  }
+};

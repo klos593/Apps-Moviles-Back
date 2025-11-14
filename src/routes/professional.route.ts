@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { getProfessionalById, getProfessionals, getProfessionalsByProfession } from "../controllers/professionals.controller.js";
+import { getProfessionalById, getProfessionals, getProfessionalsByProfession, getProfessionsById } from "../controllers/professionals.controller.js";
 
 const professionalRouter = Router();
 
@@ -25,6 +25,13 @@ professionalRouter.get("/professionals/:profession", async (req, res) => {
     const { profession } = req.params;
     const allProfessionals = await getProfessionalsByProfession(profession);
     res.json(allProfessionals);
+});
+
+professionalRouter.get("/professionalProfessions/:id", async (req, res) => {
+    const { id } = req.params;
+    const professionalId = parseInt(id, 10);
+    const professions = await getProfessionsById(professionalId);
+    res.json(professions);
 });
 
 export default professionalRouter;

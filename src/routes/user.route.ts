@@ -1,13 +1,8 @@
 import { Router } from "express";
-import { prisma } from "../config/prisma.js";
-import { getUserByEmail, updateUserByEmail } from "../controllers/user.controller.js";
+import { getUserByEmail, getUserIdAndAddressByEmail, updateUser } from "../controllers/user.controller.js";
 
 const userRouter = Router();
 
-userRouter.get("/users", async (req, res) => {
-    const allUsers = await prisma.user.findMany();
-    res.json(allUsers);
-});
 userRouter.get("/user/:email", async (req, res) => {
     const { email } = req.params;
     if (!email) {
@@ -18,7 +13,17 @@ userRouter.get("/user/:email", async (req, res) => {
     res.json(user);
 });
 
-userRouter.put("/user/:email", updateUserByEmail);
+userRouter.get("/userIdAndAddress/:email", async (req, res) => {
+    const { email } = req.params;
+    if (!email) {
+        return res.status(400).json({ error: "Missing email parameter" });
+    }
+
+    const user = await getUserIdAndAddressByEmail(email);
+    res.json(user);
+});
+
+userRouter.put("/user/:email", updateUser);
 
 
 export default userRouter;

@@ -78,6 +78,26 @@ export async function getProfessionalById(professionalId: number) {
     return formattedProfessional;
 }
 
+export async function getProfessionsById(userId: number) {
+  const professions = await prisma.profession.findMany({
+    where: {
+      UserProfession: {
+        some: {
+          userId,
+        },
+      },
+    },
+    select: {
+      id: true,
+      name: true,
+      picture: true,
+    },
+  });
+
+  return professions;
+}
+
+
 export async function getProfessionalsByProfession(profession: string) {
   const professionalsFromDb = await prisma.user.findMany({
       where: {

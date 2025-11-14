@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { get } from "http";
-import { getFinishedUsedServices } from "../controllers/service.controller.js";
+import { createService, getFinishedUsedServices } from "../controllers/service.controller.js";
+import { create } from "domain";
 
 const serviceRouter = Router();
 
@@ -12,5 +13,7 @@ serviceRouter.get("/finishedUsedServices/:email", async (req, res) => {
     const services = await getFinishedUsedServices(email);
     res.json(services);
 });
+
+serviceRouter.post("/createService", createService)
 
 export default serviceRouter;
