@@ -3,48 +3,200 @@ import type { Request, Response } from 'express';
 
 const prisma = new PrismaClient();
 
+export async function getUserActiveServices(email: string) {
+  const user = await prisma.user.findUnique({
+    where: { email },
+    select: { id: true },
+  });
+  if (!user) return [];
+
+  const services = await prisma.service.findMany({
+    where: {
+      userId: user.id,
+      state: {
+        in: ["ACCEPTED", "PENDING"],
+      },
+    },
+    orderBy: { date: "desc" },
+    include: {
+      profession: { select: { name: true } },
+      provider: { select: { name: true, lastName: true } },
+      address: {
+        select: {
+          street: true,
+          number: true,
+          postalCode: true,
+          country: true,
+          province: true,
+          floor: true,
+        },
+      },
+    },
+  });
+
+  return services.map((s) => ({
+    id: String(s.id),
+    name: s.provider.name,
+    lastName: s.provider.lastName,
+    profession: s.profession.name,
+    date: s.date.toISOString(),
+    state: s.state,
+    address: {
+      street: s.address.street,
+      number: s.address.number,
+      postalCode: s.address.postalCode,
+      country: s.address.country,
+      province: s.address.province,
+      floor: s.address.floor,
+    },
+  }));
+}
+
 export async function getFinishedUsedServices(email: string) {
-    const user = await prisma.user.findUnique({
-        where: { email },
-        select: { id: true },
-    });
-    if (!user) return [];
+  const user = await prisma.user.findUnique({
+    where: { email },
+    select: { id: true },
+  });
+  if (!user) return [];
 
-    const services = await prisma.service.findMany({
-        where: { userId: user.id },
-        orderBy: { date: "desc" },
-        include: {
-            profession: { select: { name: true } },
-            provider: { select: { name: true, lastName: true } },
-            address: {
-                select: {
-                    street: true,
-                    number: true,
-                    postalCode: true,
-                    country: true,
-                    province: true,
-                    floor: true,
-                },
-            },
+  const services = await prisma.service.findMany({
+    where: {
+      userId: user.id,
+      state: {
+        in: ["COMPLETED", "REJECTED", "CANCELED"],
+      },
+    },
+    orderBy: { date: "desc" },
+    include: {
+      profession: { select: { name: true } },
+      provider: { select: { name: true, lastName: true } },
+      address: {
+        select: {
+          street: true,
+          number: true,
+          postalCode: true,
+          country: true,
+          province: true,
+          floor: true,
         },
-    });
+      },
+    },
+  });
 
-    return services.map((s) => ({
-        id: String(s.id),
-        name: s.provider.name,
-        lastName: s.provider.lastName,
-        profession: s.profession.name,
-        date: s.date.toISOString(),
-        state: s.state,
-        address: {
-            street: s.address.street,
-            number: s.address.number,
-            postalCode: s.address.postalCode,
-            country: s.address.country,
-            province: s.address.province,
-            floor: s.address.floor,
+  return services.map((s) => ({
+    id: String(s.id),
+    name: s.provider.name,
+    lastName: s.provider.lastName,
+    profession: s.profession.name,
+    date: s.date.toISOString(),
+    state: s.state,
+    address: {
+      street: s.address.street,
+      number: s.address.number,
+      postalCode: s.address.postalCode,
+      country: s.address.country,
+      province: s.address.province,
+      floor: s.address.floor,
+    },
+  }));
+}
+
+export async function getProviderActiveServices(email: string) {
+  const provider = await prisma.user.findUnique({
+    where: { email },
+    select: { id: true },
+  });
+  if (!provider) return [];
+
+  const services = await prisma.service.findMany({
+    where: {
+      providerId: provider.id,
+      state: {
+        in: ["ACCEPTED", "PENDING"],
+      },
+    },
+    orderBy: { date: "desc" },
+    include: {
+      profession: { select: { name: true } },
+      user: { select: { name: true, lastName: true } },
+      address: {
+        select: {
+          street: true,
+          number: true,
+          postalCode: true,
+          country: true,
+          province: true,
+          floor: true,
         },
-    }));
+      },
+    },
+  });
+
+  return services.map((s) => ({
+    id: String(s.id),
+    name: s.user.name,
+    lastName: s.user.lastName,
+    profession: s.profession.name,
+    date: s.date.toISOString(),
+    state: s.state,
+    address: {
+      street: s.address.street,
+      number: s.address.number,
+      postalCode: s.address.postalCode,
+      country: s.address.country,
+      province: s.address.province,
+      floor: s.address.floor,
+    },
+  }));
+}
+
+export async function getFinishedProvidedServices(email: string) {
+  const provider = await prisma.user.findUnique({
+    where: { email },
+    select: { id: true },
+  });
+  if (!provider) return [];
+
+  const services = await prisma.service.findMany({
+    where: {
+      providerId: provider.id,
+      state: {
+        in: ["COMPLETED", "REJECTED", "CANCELED"],
+      },
+    },
+    orderBy: { date: "desc" },
+    include: {
+      profession: { select: { name: true } },
+      user: { select: { name: true, lastName: true } },
+      address: {
+        select: {
+          street: true,
+          number: true,
+          postalCode: true,
+          country: true,
+          province: true,
+          floor: true,
+        },
+      },
+    },
+  });
+
+  return services.map((s) => ({
+    id: String(s.id),
+    name: s.user.name,
+    lastName: s.user.lastName,
+    profession: s.profession.name,
+    date: s.date.toISOString(),
+    state: s.state,
+    address: {
+      street: s.address.street,
+      number: s.address.number,
+      postalCode: s.address.postalCode,
+      country: s.address.country,
+      province: s.address.province,
+      floor: s.address.floor,
+    },
+  }));
 }
 
 export const createService = async (req: Request, res: Response) => {
