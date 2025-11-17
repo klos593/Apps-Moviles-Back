@@ -1,11 +1,21 @@
 import { prisma } from "../config/prisma.js";
+import type { Request, Response } from 'express';
 
-export async function getProfessionals() {
+export async function getProfessionals(currentUserId: number) {
   const professionals = await prisma.user.findMany({
     where: {
-      UserProfession: {
-        some: {}, 
-      },
+      AND: [
+        {
+          UserProfession: {
+            some: {}, 
+          }
+        },
+        {
+          NOT: {
+            id: currentUserId 
+          }
+        }
+      ]
     },
     select: {
       id: true,
@@ -23,6 +33,12 @@ export async function getProfessionals() {
         },
       },
     },
+    orderBy: {
+      rating: {
+        sort: 'desc',
+        nulls: 'last' 
+      }
+    }
   });
 
   const formattedProfessionals = professionals.map(p => ({
@@ -30,7 +46,7 @@ export async function getProfessionals() {
     picture: p.picture,
     name: p.name,
     lastName: p.lastName,
-    rating: p.rating,
+    rating: p.rating || 0, 
     professions: p.UserProfession.map(up => up.profession.name),
   }));
 
@@ -97,47 +113,249 @@ export async function getProfessionsById(userId: number) {
   return professions;
 }
 
+export async function getAvailableProfessionsById(userId: number) {
+  const professions = await prisma.profession.findMany({
+    where: {
+      UserProfession: {
+        none: {
+          userId,
+        },
+      },
+    },
+    select: {
+      id: true,
+      name: true,
+      picture: true,
+    },
+  });
 
-export async function getProfessionalsByProfession(profession: string) {
+  return professions;
+}
+
+export async function getProfessionalsByProfession(profession: string, currentUserId: number) {
+  if (!currentUserId || isNaN(currentUserId)) {
+    throw new Error('currentUserId debe ser un número válido');
+  }
+
   const professionalsFromDb = await prisma.user.findMany({
-      where: {
-        UserProfession: {
-          some: {
-            profession: {
-              name: {
-                equals: profession,
-                mode: 'insensitive', 
+    where: {
+      AND: [
+        {
+          UserProfession: {
+            some: {
+              profession: {
+                name: {
+                  equals: profession,
+                  mode: 'insensitive', 
+                },
               },
             },
           },
         },
-      },
-      select: {
-        id: true,
-        name: true,
-        lastName: true,
-        picture: true,
-        rating: true,
-        UserProfession: { 
-          select: {
-            profession: {
-              select: {
-                name: true,
-              },
+        {
+          NOT: {
+            id: currentUserId 
+          }
+        }
+      ]
+    },
+    select: {
+      id: true,
+      name: true,
+      lastName: true,
+      picture: true,
+      rating: true,
+      UserProfession: { 
+        select: {
+          profession: {
+            select: {
+              name: true,
             },
           },
         },
       },
+    },
+    orderBy: {
+      rating: {
+        sort: 'desc',
+        nulls: 'last' 
+      }
+    }
+  });
+
+  const formattedProfessionals = professionalsFromDb.map(p => ({
+    id: p.id.toString(), 
+    name: p.name,
+    lastName: p.lastName,
+    picture: p.picture,
+    rating: Number(p.rating ?? 0), 
+    professions: p.UserProfession.map(up => up.profession.name), 
+  }));
+
+  return formattedProfessionals;
+}
+
+export const createUserProfession = async (req: Request, res: Response) => {
+  try {
+    const { userId, professionId } = req.body;
+
+    if (!userId || !professionId) {
+      return res.status(400).json({
+        error: 'userId y professionId son requeridos'
+      });
+    }
+
+    const userIdInt = parseInt(userId);
+    const professionIdInt = parseInt(professionId);
+
+    if (isNaN(userIdInt) || isNaN(professionIdInt)) {
+      return res.status(400).json({
+        error: 'userId y professionId deben ser números válidos'
+      });
+    }
+
+    const userExists = await prisma.user.findUnique({
+      where: { id: userIdInt }
     });
 
-    const formattedProfessionals = professionalsFromDb.map(p => ({
-      id: p.id.toString(), 
-      name: p.name,
-      lastName: p.lastName,
-      picture: p.picture,
-      rating: Number(p.rating ?? 0), 
-      professions: p.UserProfession.map(up => up.profession.name), 
-    }));
-    
-    return formattedProfessionals;
-}
+    if (!userExists) {
+      return res.status(404).json({
+        error: 'Usuario no encontrado'
+      });
+    }
+
+    const professionExists = await prisma.profession.findUnique({
+      where: { id: professionIdInt }
+    });
+
+    if (!professionExists) {
+      return res.status(404).json({
+        error: 'Profesión no encontrada'
+      });
+    }
+
+    const userProfession = await prisma.userProfession.create({
+      data: {
+        userId: userIdInt,
+        professionId: professionIdInt
+      },
+      include: {
+        user: {
+          select: {
+            id: true,
+            name: true,
+            lastName: true,
+            email: true
+          }
+        },
+        profession: {
+          select: {
+            id: true,
+            name: true,
+            picture: true
+          }
+        }
+      }
+    });
+
+    return res.status(201).json({
+      message: 'Profesión asignada al usuario exitosamente',
+      data: userProfession
+    });
+
+  } catch (error: any) {
+    if (error.code === 'P2002') {
+      return res.status(409).json({
+        error: 'El usuario ya tiene asignada esta profesión'
+      });
+    }
+
+    console.error('Error al crear UserProfession:', error);
+    return res.status(500).json({
+      error: 'Error interno del servidor',
+      details: error.message
+    });
+  }
+};
+
+export const deleteUserProfession = async (req: Request, res: Response) => {
+  try {
+    const { userId, professionId } = req.body;
+
+    // Validar que ambos parámetros existan
+    if (!userId || !professionId) {
+      return res.status(400).json({
+        error: 'userId y professionId son requeridos'
+      });
+    }
+
+    // Convertir a números enteros
+    const userIdInt = parseInt(userId);
+    const professionIdInt = parseInt(professionId);
+
+    // Validar que sean números válidos
+    if (isNaN(userIdInt) || isNaN(professionIdInt)) {
+      return res.status(400).json({
+        error: 'userId y professionId deben ser números válidos'
+      });
+    }
+
+    // Verificar que la relación existe antes de eliminarla
+    const userProfessionExists = await prisma.userProfession.findUnique({
+      where: {
+        userId_professionId: {
+          userId: userIdInt,
+          professionId: professionIdInt
+        }
+      },
+      include: {
+        user: {
+          select: {
+            id: true,
+            name: true,
+            lastName: true
+          }
+        },
+        profession: {
+          select: {
+            id: true,
+            name: true
+          }
+        }
+      }
+    });
+
+    if (!userProfessionExists) {
+      return res.status(404).json({
+        error: 'La relación usuario-profesión no existe'
+      });
+    }
+
+    // Eliminar la relación UserProfession
+    await prisma.userProfession.delete({
+      where: {
+        userId_professionId: {
+          userId: userIdInt,
+          professionId: professionIdInt
+        }
+      }
+    });
+
+    return res.status(200).json({
+      message: 'Profesión eliminada del usuario exitosamente',
+      data: {
+        userId: userIdInt,
+        professionId: professionIdInt,
+        user: userProfessionExists.user,
+        profession: userProfessionExists.profession
+      }
+    });
+
+  } catch (error: any) {
+    console.error('Error al eliminar UserProfession:', error);
+    return res.status(500).json({
+      error: 'Error interno del servidor',
+      details: error.message
+    });
+  }
+};
