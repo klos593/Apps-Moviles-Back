@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { createService, getFinishedProvidedServices, getFinishedUsedServices, getProviderActiveServices, getUserActiveServices } from "../controllers/service.controller.js";
+import { createService, getFinishedProvidedServices, getFinishedUsedServices, getProviderActiveServices, getServiceInfoById, getUserActiveServices } from "../controllers/service.controller.js";
 
 const serviceRouter = Router();
 
@@ -39,7 +39,16 @@ serviceRouter.get("/providerActiveServices/:email", async (req, res) => {
     res.json(services);
 });
 
-
 serviceRouter.post("/createService", createService)
+
+serviceRouter.get("/serviceInfo/:id", async (req, res) => {
+    const { id } = req.params
+    if (!id) {
+        return res.status(400).json({ error: "Missing id parameter" });
+    }
+    const userId = parseInt(id,10)
+    const services = await getServiceInfoById(userId);
+    res.json(services);
+})
 
 export default serviceRouter;

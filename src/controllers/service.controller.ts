@@ -199,6 +199,44 @@ export async function getFinishedProvidedServices(email: string) {
   }));
 }
 
+export async function getServiceInfoById(id: number) {
+  const service = await prisma.service.findUnique({
+    where: {
+      id: id,
+    },
+    select: {
+      id: true,
+      date: true,
+      state: true,
+      price: true,
+      rating: true,
+      comment: true,
+      provider: {
+        select: {
+          name: true,
+          lastName: true,
+        },
+      },
+      profession: {
+        select: {
+          name: true,
+        },
+      },
+      address: {
+        select: {
+          street: true,
+          number: true,
+          floor: true,
+          province: true,
+          country: true,
+        },
+      },
+    },
+  });
+
+  return service;
+}
+
 export const createService = async (req: Request, res: Response) => {
   try {
     const {
