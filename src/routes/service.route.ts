@@ -1,7 +1,5 @@
 import { Router } from "express";
-import { get } from "http";
 import { createService, getFinishedProvidedServices, getFinishedUsedServices, getProviderActiveServices, getUserActiveServices } from "../controllers/service.controller.js";
-import { create } from "domain";
 
 const serviceRouter = Router();
 
