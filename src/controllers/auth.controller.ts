@@ -8,7 +8,6 @@ const JWT_EXPIRES_S = Number(process.env.JWT_EXPIRES_S ?? 60 * 60 * 24 * 7);
 const signOpts: SignOptions = { expiresIn: JWT_EXPIRES_S };
 const BCRYPT_ROUNDS = Number(process.env.BCRYPT_ROUNDS ?? 10);
 
-// Helper para mapear user + userAddresses -> addresses[]
 function packUserResponse(user: any) {
   const { password: _omit, userAddresses, ...rest } = user;
   const addresses =
@@ -30,16 +29,17 @@ export async function register(req: Request, res: Response) {
       email,
       password,
       name,
-      lastName = "",
-      phone = "",
+      lastName,
+      phone,
+      picture,
       address,
     } = req.body as {
       email: string;
       password: string;
       name: string;
-      lastName?: string;
-      phone?: string;
-      picture?: string;
+      lastName: string;
+      phone: string;
+      picture: string;
       address?: {
         country?: string;
         province?: string;
@@ -50,16 +50,12 @@ export async function register(req: Request, res: Response) {
       };
     };
 
-    // 1) email único
     const exists = await prisma.user.findUnique({ where: { email } });
     if (exists) return res.status(409).json({ error: "Email already exists" });
 
-    // 2) hash pass
     const hash = await bcrypt.hash(password, BCRYPT_ROUNDS);
 
-    // 3) creación atómica: user -> (opcional) address -> userAddress
     const created = await prisma.$transaction(async (tx) => {
-      // User requiere picture/description (en tu schema son String no-null)
       const user = await tx.user.create({
         data: {
           email,
@@ -67,9 +63,8 @@ export async function register(req: Request, res: Response) {
           name,
           lastName,
           phone,
-          picture: "",         // placeholder
-          description: "",     // placeholder
-          // rating/workRadius son opcionales
+          picture,         
+          description: "",   
         },
       });
 
@@ -93,7 +88,6 @@ export async function register(req: Request, res: Response) {
         });
       }
 
-      // devolver con sus direcciones
       return tx.user.findUnique({
         where: { id: user.id },
         include: {
@@ -120,7 +114,6 @@ export async function login(req: Request, res: Response) {
   try {
     const { email, password } = req.body as { email: string; password: string };
 
-    // Traer con direcciones para responder igual que register
     const user = await prisma.user.findUnique({
       where: { email },
       include: {
