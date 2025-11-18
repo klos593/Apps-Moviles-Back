@@ -216,6 +216,8 @@ export async function getServiceInfoById(id: number) {
           id: true,
           name: true,
           lastName: true,
+          phone: true,
+          email: true,
         },
       },
       user: {
