@@ -49,10 +49,6 @@ export async function getUserByEmail(email: string) {
   };
 }
 
-/**
- * PATCH-like: actualiza datos básicos y, si viene dirección,
- * CREA una nueva Address y la asocia (no modifica ni borra las anteriores).
- */
 export const updateUser = async (req: Request, res: Response) => {
   try {
     const { email } = req.params;
@@ -68,7 +64,6 @@ export const updateUser = async (req: Request, res: Response) => {
       description,
     } = req.body;
 
-    // Buscar usuario existente
     const existingUser = await prisma.user.findUnique({
       where: { email },
       include: {
@@ -90,27 +85,23 @@ export const updateUser = async (req: Request, res: Response) => {
       });
     }
 
-    // Verificar si la dirección cambió
     const currentAddress = existingUser.userAddresses[0]?.address;
     let addressChanged = false;
 
     if (currentAddress) {
-      addressChanged = 
+      addressChanged =
         currentAddress.street !== street ||
         currentAddress.number !== number ||
         currentAddress.floor !== floor ||
         currentAddress.province !== province ||
         currentAddress.country !== country;
     } else {
-      // Si no tiene dirección, siempre se considera cambio
       addressChanged = true;
     }
 
     let newAddressId = currentAddress?.id;
 
-    // Si la dirección cambió, crear nueva dirección y relación
     if (addressChanged) {
-      // Buscar si ya existe una dirección idéntica en la BD
       const existingAddress = await prisma.address.findFirst({
         where: {
           street,
@@ -122,10 +113,8 @@ export const updateUser = async (req: Request, res: Response) => {
       });
 
       if (existingAddress) {
-        // Si existe, usar esa dirección
         newAddressId = existingAddress.id;
       } else {
-        // Crear nueva dirección
         const newAddress = await prisma.address.create({
           data: {
             street,
@@ -133,13 +122,12 @@ export const updateUser = async (req: Request, res: Response) => {
             floor,
             province,
             country,
-            postalCode: 0, // Valor por defecto, ajustar según necesites
+            postalCode: 0, 
           },
         });
         newAddressId = newAddress.id;
       }
 
-      // Verificar si ya existe la relación UserAddress
       const existingUserAddress = await prisma.userAddress.findUnique({
         where: {
           userId_addressId: {
@@ -149,7 +137,6 @@ export const updateUser = async (req: Request, res: Response) => {
         },
       });
 
-      // Solo crear la relación si no existe
       if (!existingUserAddress) {
         await prisma.userAddress.create({
           data: {
@@ -160,7 +147,6 @@ export const updateUser = async (req: Request, res: Response) => {
       }
     }
 
-    // Actualizar datos del usuario
     const updatedUser = await prisma.user.update({
       where: { email },
       data: {
@@ -187,7 +173,6 @@ export const updateUser = async (req: Request, res: Response) => {
       },
     });
 
-    // Formatear respuesta según tipo UserData
     const response = {
       id: updatedUser.id,
       mail: updatedUser.email,
@@ -217,6 +202,62 @@ export const updateUser = async (req: Request, res: Response) => {
   }
 };
 
+export async function updatePicture(req: Request, res: Response) {
+  try {
+    const { userId, pictureUrl } = req.body;
+
+    if (!userId) {
+      return res.status(400).json({ error: 'User ID is required' });
+    }
+
+    if (!pictureUrl) {
+      return res.status(400).json({ error: 'Picture URL is required' });
+    }
+
+    if (isNaN(userId)) {
+      return res.status(400).json({ error: 'Invalid user ID format' });
+    }
+
+    try {
+      new URL(pictureUrl);
+    } catch {
+      return res.status(400).json({ error: 'Invalid picture URL format' });
+    }
+
+    const existingUser = await prisma.user.findUnique({
+      where: { id: userId },
+    });
+
+    if (!existingUser) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    const updatedUser = await prisma.user.update({
+      where: { id: userId },
+      data: { picture: pictureUrl },
+      select: {
+        id: true,
+        email: true,
+        name: true,
+        lastName: true,
+        picture: true,
+        phone: true,
+        rating: true,
+        description: true,
+      },
+    });
+
+    return res.status(200).json({
+      success: true,
+      message: 'Profile picture updated successfully',
+    });
+
+  } catch (error) {
+    console.error('Error updating profile picture:', error);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+};
+
 export async function getUserIdAndAddressByEmail(email: string) {
   const user = await prisma.user.findUnique({
     where: { email },
@@ -224,7 +265,7 @@ export async function getUserIdAndAddressByEmail(email: string) {
       id: true,
       userAddresses: {
         orderBy: {
-          addressId: "desc", 
+          addressId: "desc",
         },
         take: 1,
         select: {

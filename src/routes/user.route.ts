@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { getUserByEmail, getUserIdAndAddressByEmail, updateUser } from "../controllers/user.controller.js";
+import { getUserByEmail, getUserIdAndAddressByEmail, updatePicture, updateUser } from "../controllers/user.controller.js";
 
 const userRouter = Router();
 
@@ -24,6 +24,6 @@ userRouter.get("/userIdAndAddress/:email", async (req, res) => {
 });
 
 userRouter.put("/user/:email", updateUser);
-
+userRouter.post("/user/picture", updatePicture)
 
 export default userRouter;
