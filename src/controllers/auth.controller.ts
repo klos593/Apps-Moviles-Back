@@ -39,6 +39,7 @@ export async function register(req: Request, res: Response) {
       name: string;
       lastName?: string;
       phone?: string;
+      picture?: string;
       address?: {
         country?: string;
         province?: string;
