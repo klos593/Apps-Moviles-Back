@@ -380,3 +380,32 @@ export const createService = async (req: Request, res: Response) => {
     });
   }
 };
+
+export async function getProfessionalReviews(professionalId: number) {
+  const reviews = await prisma.service.findMany({
+    where: {
+      professionId: professionalId,
+    },
+    orderBy: {
+      id: 'desc',
+    },
+    select: {
+      id: true,
+      rating: true,
+      comment: true,
+      user: {
+        select: {
+          name: true,
+          lastName: true,
+        },
+      },
+    },
+  });
+
+  return reviews.map((r) => ({
+    id: r.id,
+    rating: r.rating,
+    comment: r.comment,
+    userName: `${r.user.name} ${r.user.lastName}`,
+  }));
+}
