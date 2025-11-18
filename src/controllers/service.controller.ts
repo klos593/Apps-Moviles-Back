@@ -237,6 +237,76 @@ export async function getServiceInfoById(id: number) {
   return service;
 }
 
+export const updateService = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const { state } = req.body;
+
+    if (!Object.values(ServiceState).includes(state)) {
+      return res.status(400).json({
+        error: 'Estado de servicio inválido',
+      });
+    }
+
+    const existingService = await prisma.service.findUnique({
+      where: { id: Number(id) },
+      include: {
+        provider: true,
+        profession: true,
+        address: true,
+      },
+    });
+
+    if (!existingService) {
+      return res.status(404).json({
+        error: 'Servicio no encontrado',
+      });
+    }
+
+    const updatedService = await prisma.service.update({
+      where: { id: Number(id) },
+      data: { state },
+      include: {
+        provider: {
+          select: { name: true, lastName: true },
+        },
+        profession: {
+          select: { name: true },
+        },
+        address: {
+          select: {
+            street: true,
+            number: true,
+            floor: true,
+            province: true,
+            country: true,
+          },
+        },
+      },
+    });
+
+    const response = {
+      id: updatedService.id,
+      state: updatedService.state,
+      date: updatedService.date,
+      price: updatedService.price,
+      rating: updatedService.rating ? Number(updatedService.rating) : null,
+      comment: updatedService.comment,
+      provider: updatedService.provider,
+      profession: updatedService.profession,
+      address: updatedService.address,
+    };
+
+    return res.status(200).json(response);
+  } catch (error) {
+    console.error('Error al actualizar el estado del servicio:', error);
+    return res.status(500).json({
+      error: 'Error interno del servidor al actualizar el estado del servicio',
+      details: error instanceof Error ? error.message : 'Error desconocido',
+    });
+  }
+};
+
 export const createService = async (req: Request, res: Response) => {
   try {
     const {

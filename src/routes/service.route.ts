@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { createService, getFinishedProvidedServices, getFinishedUsedServices, getProviderActiveServices, getServiceInfoById, getUserActiveServices, getProfessionalReviews } from "../controllers/service.controller.js";
+import { createService, getFinishedProvidedServices, getFinishedUsedServices, getProviderActiveServices, getServiceInfoById, getUserActiveServices, getProfessionalReviews, updateService } from "../controllers/service.controller.js";
 
 const serviceRouter = Router();
 
@@ -60,5 +60,7 @@ serviceRouter.get("/providerReviews/:id", async (req, res) => {
     const reviews = await getProfessionalReviews(professionalId);
     res.json(reviews);
 });
+
+serviceRouter.put("/serviceInfo/:id", updateService);
 
 export default serviceRouter;
