@@ -213,6 +213,13 @@ export async function getServiceInfoById(id: number) {
       comment: true,
       provider: {
         select: {
+          id: true,
+          name: true,
+          lastName: true,
+        },
+      },
+      user: {
+        select: {
           name: true,
           lastName: true,
         },
