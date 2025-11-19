@@ -497,10 +497,11 @@ export async function updateReview(req: Request, res: Response) {
 
   try {
     const updatedService = await prisma.service.update({
-      where: { id: id },
+      where: { id: parseInt(id) },
       data: {
         rating,
         comment,
+        isReviewed: true,
       },
       select: {
         id: true,
