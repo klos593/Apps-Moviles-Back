@@ -61,6 +61,6 @@ serviceRouter.get("/providerReviews/:id", async (req, res) => {
     res.json(reviews);
 });
 
-serviceRouter.put("/serviceInfo/:id", updateService);
+serviceRouter.put("/serviceInfo", updateService);
 
 export default serviceRouter;

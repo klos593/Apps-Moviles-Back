@@ -16,20 +16,21 @@ enum ServiceState {
 }
 
 model User {
-  id               Int              @id @default(autoincrement())
-  email            String           @unique
-  name             String
-  lastName         String
-  password         String
-  phone            String
-  workRadius       Decimal?
-  picture          String
-  rating           Decimal?
-  description      String
-  UserProfession   UserProfession[]
-  usedServices     Service[]        @relation("userId")
-  providedServices Service[]        @relation("providerId")
-  userAddresses    UserAddress[]
+  id                Int              @id @default(autoincrement())
+  email             String           @unique
+  name              String
+  lastName          String
+  password          String
+  phone             String
+  workRadius        Decimal?
+  picture           String
+  rating            Decimal?
+  description       String
+  hasPendingReviews Boolean          @default(false)
+  UserProfession    UserProfession[]
+  usedServices      Service[]        @relation("userId")
+  providedServices  Service[]        @relation("providerId")
+  userAddresses     UserAddress[]
 }
 
 model Address {
@@ -82,6 +83,7 @@ model Service {
   price        Decimal?
   comment      String?
   date         DateTime
+  isReviewed   Boolean      @default(false)
   addressId    Int          @default(1)
   address      Address      @relation(fields: [addressId], references: [id])
   state        ServiceState @default(PENDING)

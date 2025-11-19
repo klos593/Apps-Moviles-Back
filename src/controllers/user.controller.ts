@@ -49,16 +49,66 @@ export async function getUserByEmail(email: string) {
   };
 }
 
+export async function getUserPendingReviews(email: string) {
+  const user = await prisma.user.findUniqueOrThrow({
+    where: { email },
+    select: {
+      hasPendingReviews: true,
+      usedServices: {
+        where: {
+          isReviewed: false,
+          state: "COMPLETED",
+        },
+        select: {
+          id: true,
+        },
+      },
+    },
+  });
+
+  return {
+    hasPendingReviews: user.hasPendingReviews,
+    pendingReviewsServiceId: user.usedServices.map(s => s.id.toString()),
+  };
+}
+
+export async function updatePendingReviews(req: Request, res: Response) {
+  try {
+    const { id, state } = req.body;
+
+    if (typeof id !== "number" || typeof state !== "boolean") {
+      return res.status(400).json({
+        error: "El body debe incluir { userId: number, value: boolean }",
+      });
+    }
+
+    const user = await prisma.user.update({
+      where: { id: id },
+      data: { hasPendingReviews: state },
+      select: {
+        id: true,
+        hasPendingReviews: true,
+      },
+    });
+
+    return res.status(200).json(user);
+
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ error: "Error actualizando usuario" });
+  }
+}
+
 export const updateUser = async (req: Request, res: Response) => {
   try {
     const { email } = req.params;
-    
+
     if (!email) {
       return res.status(400).json({
         error: 'Email es requerido',
       });
     }
-    
+
     const {
       name,
       lastName,
@@ -109,14 +159,12 @@ export const updateUser = async (req: Request, res: Response) => {
     let newAddressId = currentAddress?.id;
 
     if (addressChanged) {
-      // Primero eliminar todas las relaciones de direcciones anteriores del usuario
       await prisma.userAddress.deleteMany({
         where: {
           userId: existingUser.id,
         },
       });
 
-      // Buscar o crear la nueva dirección
       const existingAddress = await prisma.address.findFirst({
         where: {
           street,
@@ -137,7 +185,7 @@ export const updateUser = async (req: Request, res: Response) => {
             floor,
             province,
             country,
-            postalCode: 0, 
+            postalCode: 0,
           },
         });
         newAddressId = newAddress.id;

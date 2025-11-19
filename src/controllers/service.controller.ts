@@ -222,6 +222,7 @@ export async function getServiceInfoById(id: number) {
       },
       user: {
         select: {
+          id: true,
           name: true,
           lastName: true,
         },
@@ -248,8 +249,7 @@ export async function getServiceInfoById(id: number) {
 
 export const updateService = async (req: Request, res: Response) => {
   try {
-    const { id } = req.params;
-    const { state } = req.body;
+    const { id, state } = req.body;
 
     if (!Object.values(ServiceState).includes(state)) {
       return res.status(400).json({
@@ -330,7 +330,6 @@ export const createService = async (req: Request, res: Response) => {
       state,
     } = req.body;
 
-    // Validaciones de campos requeridos
     if (!professionId) {
       return res.status(400).json({
         error: 'El campo professionId es requerido',
@@ -355,7 +354,6 @@ export const createService = async (req: Request, res: Response) => {
       });
     }
 
-    // Validar que la profesión existe
     const profession = await prisma.profession.findUnique({
       where: { id: professionId },
     });
@@ -366,7 +364,6 @@ export const createService = async (req: Request, res: Response) => {
       });
     }
 
-    // Validar que el usuario existe
     const user = await prisma.user.findUnique({
       where: { id: userId },
     });
@@ -377,7 +374,6 @@ export const createService = async (req: Request, res: Response) => {
       });
     }
 
-    // Validar que el proveedor existe
     const provider = await prisma.user.findUnique({
       where: { id: providerId },
     });
@@ -388,7 +384,6 @@ export const createService = async (req: Request, res: Response) => {
       });
     }
 
-    // Validar que la dirección existe (si se proporciona)
     if (addressId) {
       const address = await prisma.address.findUnique({
         where: { id: addressId },
@@ -401,7 +396,6 @@ export const createService = async (req: Request, res: Response) => {
       }
     }
 
-    // Crear el servicio
     const service = await prisma.service.create({
       data: {
         professionId,
