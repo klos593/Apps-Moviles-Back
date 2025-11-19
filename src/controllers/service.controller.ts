@@ -462,7 +462,11 @@ export const createService = async (req: Request, res: Response) => {
 export async function getProfessionalReviews(professionalId: number) {
   const reviews = await prisma.service.findMany({
     where: {
-      professionId: professionalId,
+      providerId: professionalId,
+      isReviewed: true,
+      rating: {
+        not: null,
+      },
     },
     orderBy: {
       id: 'desc',
@@ -495,8 +499,8 @@ export async function updateReview(req: Request, res: Response) {
     const updatedService = await prisma.service.update({
       where: { id: id },
       data: {
-        rating,   
-        comment,  
+        rating,
+        comment,
       },
       select: {
         id: true,

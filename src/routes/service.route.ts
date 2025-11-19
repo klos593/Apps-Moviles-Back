@@ -51,7 +51,7 @@ serviceRouter.get("/serviceInfo/:id", async (req, res) => {
     res.json(services);
 })
 
-serviceRouter.get("/providerReviews/:id", async (req, res) => {
+serviceRouter.get("/serviceInfo/providerReviews/:id", async (req, res) => {
     const { id } = req.params;
     if (!id) {
         return res.status(400).json({ error: "Missing id parameter" });
