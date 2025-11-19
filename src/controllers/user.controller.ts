@@ -52,6 +52,13 @@ export async function getUserByEmail(email: string) {
 export const updateUser = async (req: Request, res: Response) => {
   try {
     const { email } = req.params;
+    
+    if (!email) {
+      return res.status(400).json({
+        error: 'Email es requerido',
+      });
+    }
+    
     const {
       name,
       lastName,
@@ -102,6 +109,14 @@ export const updateUser = async (req: Request, res: Response) => {
     let newAddressId = currentAddress?.id;
 
     if (addressChanged) {
+      // Primero eliminar todas las relaciones de direcciones anteriores del usuario
+      await prisma.userAddress.deleteMany({
+        where: {
+          userId: existingUser.id,
+        },
+      });
+
+      // Buscar o crear la nueva dirección
       const existingAddress = await prisma.address.findFirst({
         where: {
           street,
@@ -128,23 +143,13 @@ export const updateUser = async (req: Request, res: Response) => {
         newAddressId = newAddress.id;
       }
 
-      const existingUserAddress = await prisma.userAddress.findUnique({
-        where: {
-          userId_addressId: {
-            userId: existingUser.id,
-            addressId: newAddressId!,
-          },
+      // Crear la nueva relación
+      await prisma.userAddress.create({
+        data: {
+          userId: existingUser.id,
+          addressId: newAddressId!,
         },
       });
-
-      if (!existingUserAddress) {
-        await prisma.userAddress.create({
-          data: {
-            userId: existingUser.id,
-            addressId: newAddressId!,
-          },
-        });
-      }
     }
 
     const updatedUser = await prisma.user.update({
