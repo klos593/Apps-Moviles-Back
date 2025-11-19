@@ -49,6 +49,7 @@ export async function getUserActiveServices(email: string) {
       province: s.address.province,
       floor: s.address.floor,
     },
+    isReviewed: s.isReviewed
   }));
 }
 
@@ -98,6 +99,7 @@ export async function getFinishedUsedServices(email: string) {
       province: s.address.province,
       floor: s.address.floor,
     },
+    isReviewed: s.isReviewed
   }));
 }
 
@@ -147,6 +149,7 @@ export async function getProviderActiveServices(email: string) {
       province: s.address.province,
       floor: s.address.floor,
     },
+    isReviewed: s.isReviewed
   }));
 }
 
@@ -196,6 +199,7 @@ export async function getFinishedProvidedServices(email: string) {
       province: s.address.province,
       floor: s.address.floor,
     },
+    isReviewed: s.isReviewed
   }));
 }
 
@@ -211,6 +215,7 @@ export async function getServiceInfoById(id: number) {
       price: true,
       rating: true,
       comment: true,
+      isReviewed: true,
       provider: {
         select: {
           id: true,
@@ -481,4 +486,29 @@ export async function getProfessionalReviews(professionalId: number) {
     comment: r.comment,
     userName: `${r.user.name} ${r.user.lastName}`,
   }));
+}
+
+export async function updateReview(req: Request, res: Response) {
+  const { id, rating, comment } = req.body;
+
+  try {
+    const updatedService = await prisma.service.update({
+      where: { id: id },
+      data: {
+        rating,   
+        comment,  
+      },
+      select: {
+        id: true,
+        rating: true,
+        comment: true,
+        isReviewed: true,
+      },
+    });
+
+    return res.status(200).json(updatedService);
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ error: "Error actualizando el servicio" });
+  }
 }

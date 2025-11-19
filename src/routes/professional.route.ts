@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { createUserProfession, deleteUserProfession, getAvailableProfessionsById, getProfessionalById, getProfessionals, getProfessionalsByProfession, getProfessionsById } from "../controllers/professionals.controller.js";
+import { createUserProfession, deleteUserProfession, getAvailableProfessionsById, getProfessionalById, getProfessionals, getProfessionalsByProfession, getProfessionsById, updateRating } from "../controllers/professionals.controller.js";
 
 const professionalRouter = Router();
 
@@ -46,6 +46,6 @@ professionalRouter.get("/professionalAvailableProfessions/:id", async (req, res)
 
 professionalRouter.post("/addProfession", createUserProfession);
 professionalRouter.post("/deleteProfession", deleteUserProfession)
-
+professionalRouter.post("/professional/updateRating", updateRating)
 
 export default professionalRouter;

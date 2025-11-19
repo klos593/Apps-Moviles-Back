@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { createService, getFinishedProvidedServices, getFinishedUsedServices, getProviderActiveServices, getServiceInfoById, getUserActiveServices, getProfessionalReviews, updateService } from "../controllers/service.controller.js";
+import { createService, getFinishedProvidedServices, getFinishedUsedServices, getProviderActiveServices, getServiceInfoById, getUserActiveServices, getProfessionalReviews, updateService, updateReview } from "../controllers/service.controller.js";
 
 const serviceRouter = Router();
 
@@ -62,5 +62,5 @@ serviceRouter.get("/providerReviews/:id", async (req, res) => {
 });
 
 serviceRouter.put("/serviceInfo", updateService);
-
+serviceRouter.post("/service/updateReview", updateReview)
 export default serviceRouter;

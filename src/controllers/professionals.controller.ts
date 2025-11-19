@@ -282,25 +282,21 @@ export const deleteUserProfession = async (req: Request, res: Response) => {
   try {
     const { userId, professionId } = req.body;
 
-    // Validar que ambos parámetros existan
     if (!userId || !professionId) {
       return res.status(400).json({
         error: 'userId y professionId son requeridos'
       });
     }
 
-    // Convertir a números enteros
     const userIdInt = parseInt(userId);
     const professionIdInt = parseInt(professionId);
 
-    // Validar que sean números válidos
     if (isNaN(userIdInt) || isNaN(professionIdInt)) {
       return res.status(400).json({
         error: 'userId y professionId deben ser números válidos'
       });
     }
 
-    // Verificar que la relación existe antes de eliminarla
     const userProfessionExists = await prisma.userProfession.findUnique({
       where: {
         userId_professionId: {
@@ -331,7 +327,6 @@ export const deleteUserProfession = async (req: Request, res: Response) => {
       });
     }
 
-    // Eliminar la relación UserProfession
     await prisma.userProfession.delete({
       where: {
         userId_professionId: {
@@ -359,3 +354,38 @@ export const deleteUserProfession = async (req: Request, res: Response) => {
     });
   }
 };
+
+export async function updateRating(req: Request, res: Response){
+  const { id } = req.body;
+
+  try {
+    const result = await prisma.service.aggregate({
+      where: {
+        providerId: id,
+        rating: { not: null }, 
+      },
+      _avg: {
+        rating: true,
+      },
+    });
+
+    const avgRating = result._avg.rating; 
+
+    
+    const updatedUser = await prisma.user.update({
+      where: { id: id },
+      data: {
+        rating: avgRating, 
+      },
+      select: {
+        id: true,
+        rating: true,
+      },
+    });
+
+    return res.status(200).json(updatedUser);
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ error: "Error actualizando rating del usuario" });
+  }
+}
