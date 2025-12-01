@@ -10,7 +10,13 @@ app.listen(3000 , () => { <-- replace 3000 with the port number used in the fron
 });
 ```
 
-To start it run:
+1. Install dependencies
+
+```
+npm install
+```
+
+2. To start it run:
 ```
 npm run dev
 ```
